@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FitBuddy | Match. Workout. Achieve.{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- FIXED KINETIC ENERGY SPIKE CANVAS BACKGROUND -->
+  <canvas id="kinetic-energy-canvas"></canvas>
+
+  <nav class="navbar">
+    <a href="{{ url_for('landing') }}" class="logo">FIT<span>BUDDY</span></a>
+    <div class="nav-links">
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+        <a href="{{ url_for('discover') }}" class="nav-link">Discover</a>
+        <a href="{{ url_for('sessions') }}" class="nav-link">Sessions</a>
+        <a href="{{ url_for('tracker') }}" class="nav-link" style="color: #ccff00; font-weight: 700;">⚡ Tracker</a>
+        <a href="{{ url_for('chat') }}" class="nav-link">Chat</a>
+        <a href="{{ url_for('safety') }}" class="nav-link">Safety</a>
+        <a href="{{ url_for('profile') }}" class="nav-link">Profile</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Logout</a>
+      {% else %}
+        <a href="{{ url_for('auth') }}" class="btn btn-primary">Login / Sign Up</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="flash-message flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- KINETIC ENERGY SPIKE CANVAS ENGINE -->
+  <script>
+  (function() {
+    const canvas = document.getElementById('kinetic-energy-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let width = 0, height = 0, dpr = 1;
+    let nodes = [];
+    const NODE_COUNT = 52;
+    const MAX_DIST = 145;
+    let mouse = { x: -9999, y: -9999, radius: 180, active: false };
+    let animationId = null;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+
+    class KineticNode {
+      constructor() {
+        this.reset(true);
+      }
+      reset(initial = false) {
+        this.x = initial ? Math.random() * (width || window.innerWidth) : (Math.random() < 0.5 ? -20 : (width || window.innerWidth) + 20);
+        this.y = Math.random() * (height || window.innerHeight);
+        this.vx = (Math.random() - 0.5) * 0.95;
+        this.vy = (Math.random() - 0.5) * 0.95;
+        this.baseRadius = Math.random() * 2 + 1.2;
+        this.spikeLength = Math.random() * 32 + 20;
+        this.phase = Math.random() * Math.PI * 2;
+        this.phaseSpeed = 0.025 + Math.random() * 0.025;
+        this.isLime = Math.random() > 0.25;
+        this.color = this.isLime ? '204, 255, 0' : '16, 185, 129';
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.phase += this.phaseSpeed;
+
+        if (this.x < -35) this.x = width + 35;
+        if (this.x > width + 35) this.x = -35;
+        if (this.y < -35) this.y = height + 35;
+        if (this.y > height + 35) this.y = -35;
+
+        if (mouse.active) {
+          const dx = this.x - mouse.x;
+          const dy = this.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < mouse.radius && dist > 1) {
+            const force = (1 - dist / mouse.radius) * 1.8;
+            this.x += (dx / dist) * force * 2;
+            this.y += (dy / dist) * force * 2;
+          }
+        }
+      }
+      drawSpike() {
+        const pulse = (Math.sin(this.phase) + 1) * 0.5;
+        const currentSpike = this.spikeLength * (0.85 + 0.45 * pulse);
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Core glowing node
+        ctx.beginPath();
+        ctx.arc(0, 0, this.baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${this.color}, ${0.75 + 0.25 * pulse})`;
+        ctx.shadowColor = `rgba(${this.color}, 0.85)`;
+        ctx.shadowBlur = 12 * pulse;
+        ctx.fill();
+
+        // Directional kinetic energy spike along velocity vector
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.rotate(angle);
+
+        // Primary kinetic spike
+        ctx.beginPath();
+        ctx.moveTo(0, -1.2);
+        ctx.lineTo(currentSpike, 0);
+        ctx.lineTo(0, 1.2);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, 0, currentSpike, 0);
+        grad.addColorStop(0, `rgba(${this.color}, ${0.7 * pulse + 0.2})`);
+        grad.addColorStop(1, `rgba(${this.color}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Secondary counter spike
+        ctx.beginPath();
+        ctx.moveTo(0, -0.9);
+        ctx.lineTo(-currentSpike * 0.4, 0);
+        ctx.lineTo(0, 0.9);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${this.color}, ${0.25 * pulse})`;
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    function init() {
+      resize();
+      nodes = [];
+      for (let i = 0; i < NODE_COUNT; i++) {
+        nodes.push(new KineticNode());
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Connect proximal nodes with glowing energy lines
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < MAX_DIST) {
+            const alpha = (1 - dist / MAX_DIST) * 0.35;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.strokeStyle = `rgba(204, 255, 0, ${alpha})`;
+            ctx.lineWidth = 0.9;
+            ctx.stroke();
+
+            // Kinetic energy pulse along filament
+            if (dist < MAX_DIST * 0.75 && (i + j) % 3 === 0) {
+              const sparkProgress = (Math.sin(nodes[i].phase * 1.6) + 1) * 0.5;
+              const sx = nodes[i].x + (nodes[j].x - nodes[i].x) * sparkProgress;
+              const sy = nodes[i].y + (nodes[j].y - nodes[i].y) * sparkProgress;
+              ctx.beginPath();
+              ctx.arc(sx, sy, 1.3, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(204, 255, 0, 0.8)';
+              ctx.shadowColor = '#ccff00';
+              ctx.shadowBlur = 6;
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      // Update and draw kinetic nodes & spikes
+      for (let i = 0; i < nodes.length; i++) {
+        nodes[i].update();
+        nodes[i].drawSpike();
+      }
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize, { passive: true });
+
+    window.addEventListener('pointermove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+    }, { passive: true });
+
+    window.addEventListener('pointerleave', () => {
+      mouse.active = false;
+      mouse.x = -9999;
+      mouse.y = -9999;
+    }, { passive: true });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (animationId) cancelAnimationFrame(animationId);
+      } else {
+        animationId = requestAnimationFrame(animate);
+      }
+    });
+
+    init();
+    animationId = requestAnimationFrame(animate);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,704 @@
+{% extends 'base.html' %}
+{% block title %}FitBuddy | Obsidian & Neon-Lime Workout Tracker{% endblock %}
+
+{% block content %}
+<div class="tracker-wrapper">
+  <!-- TOP HEADER HUD -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ccff00; box-shadow: 0 0 10px #ccff00;"></span>
+        <span style="font-size: 0.8rem; font-weight: 800; color: #ccff00; letter-spacing: 1.5px; text-transform: uppercase;">
+          Progressive Overload Tracker
+        </span>
+      </div>
+      <h1 style="font-size: 2.2rem; font-weight: 900; letter-spacing: -0.5px; margin-top: 0.2rem; color: #ffffff;">
+        WORKOUT <span style="color: #ccff00; text-shadow: 0 0 20px rgba(204, 255, 0, 0.4);">TRACKER</span>
+      </h1>
+      <p style="color: #8f94ab; font-size: 0.9rem;">
+        Log compound lifts, preview Olympic sleeve loads, and track rest intervals in real time.
+      </p>
+    </div>
+
+    <!-- Live Total Volume & Controls -->
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <div style="background: #141520; border: 1px solid #232538; border-radius: 10px; padding: 0.6rem 1.2rem; text-align: right; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+        <div style="font-size: 0.72rem; color: #8f94ab; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Session Volume</div>
+        <div style="font-size: 1.6rem; font-weight: 900; color: #ccff00; font-family: 'SF Mono', monospace;" id="session-total-volume">
+          0.0 <span style="font-size: 0.85rem; color: #8f94ab;">kg</span>
+        </div>
+      </div>
+      <button type="button" class="btn-neon" onclick="saveWorkoutSession()">
+        <span>💾</span> Save Workout
+      </button>
+    </div>
+  </div>
+
+  <div class="grid-2" style="gap: 1.5rem; align-items: start;">
+    <!-- LEFT COLUMN: INTERACTIVE SET LOGGER -->
+    <div>
+      <!-- EXERCISE SELECTOR CARD -->
+      <div class="tracker-card neon-glow-card" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <label style="font-size: 0.8rem; font-weight: 700; color: #ccff00; text-transform: uppercase; letter-spacing: 1px;">
+            Target Exercise
+          </label>
+          <span style="font-size: 0.75rem; color: #8f94ab;" id="exercise-equipment-tag">Barbell • Compound</span>
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem;">
+          <select id="active-exercise-select" class="form-control" onchange="onExerciseChange()" style="background: #0f1017; border-color: #232538; color: #fff; font-size: 1.05rem; font-weight: 700;">
+            {% for ex in exercises %}
+              <option value="{{ ex.id }}" data-name="{{ ex.name }}" data-category="{{ ex.category }}" data-equipment="{{ ex.equipment }}" data-bar="{{ ex.default_bar_weight }}">
+                {{ ex.name }} ({{ ex.category }})
+              </option>
+            {% else %}
+              <option value="1" data-name="Barbell Bench Press" data-category="Chest" data-equipment="Barbell" data-bar="20">
+                Barbell Bench Press (Chest)
+              </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn-neon-outline" onclick="promptAddExercise()" title="Add custom exercise">
+            + New
+          </button>
+        </div>
+      </div>
+
+      <!-- SET LOGGER CARD -->
+      <div class="tracker-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⚡</span> Active Set Log
+          </h2>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span style="font-size: 0.75rem; color: #8f94ab;">Unit:</span>
+            <button type="button" class="btn-neon-outline" id="tracker-unit-toggle" onclick="toggleTrackerUnit()" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;">
+              KG
+            </button>
+          </div>
+        </div>
+
+        <!-- Column Headers -->
+        <div style="display: grid; grid-template-columns: 48px 1fr 1fr 1fr 65px 44px 32px; gap: 0.5rem; padding: 0 0.6rem 0.5rem 0.6rem; font-size: 0.72rem; color: #8f94ab; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+          <div>SET</div>
+          <div>WEIGHT</div>
+          <div>REPS</div>
+          <div>RPE</div>
+          <div>TARGET</div>
+          <div style="text-align: center;">LOG</div>
+          <div></div>
+        </div>
+
+        <!-- Dynamic Sets Container -->
+        <div id="sets-rows-container">
+          <!-- Initial Set Rows injected via JS -->
+        </div>
+
+        <!-- Add Set & Action Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+          <button type="button" class="btn-neon-outline" onclick="addNewSetRow()" style="padding: 0.55rem 1rem;">
+            ➕ Add Set
+          </button>
+          <div style="font-size: 0.8rem; color: #8f94ab;">
+            Tap <span style="color: #ccff00; font-weight: 700;">✓</span> to complete set & start rest timer
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKOUT NOTES -->
+      <div class="tracker-card" style="padding: 1rem;">
+        <label style="font-size: 0.75rem; color: #8f94ab; font-weight: 700; text-transform: uppercase;">Session Notes & Overload Cues</label>
+        <input type="text" id="workout-notes-input" class="form-control" placeholder="e.g. +2.5kg PR on set 2, focused on explosive pause at chest." style="background: #0f1017; border-color: #232538; color: #fff; margin-top: 0.4rem;">
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: REST TIMER & LIVE BARBELL VISUALIZER -->
+    <div>
+      <!-- ACTIVE REST COUNTDOWN TIMER CARD -->
+      <div class="tracker-card neon-glow-card" style="text-align: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div style="font-size: 0.8rem; font-weight: 800; color: #ccff00; text-transform: uppercase; letter-spacing: 1px;">
+            Active Rest Timer
+          </div>
+          <span class="badge" id="timer-status-badge" style="background: rgba(204, 255, 0, 0.15); color: #ccff00; border: 1px solid rgba(204, 255, 0, 0.4);">
+            IDLE
+          </span>
+        </div>
+
+        <!-- Circular Dial Countdown -->
+        <div class="timer-dial" id="timer-dial">
+          <div class="timer-digits" id="timer-digits">01:30</div>
+          <div class="timer-label" id="timer-sublabel">Rest Interval</div>
+        </div>
+
+        <!-- Primary Timer Controls: +30s, Play/Pause, Reset -->
+        <div style="display: flex; gap: 0.6rem; justify-content: center; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
+          <!-- +30s BUTTON -->
+          <button type="button" class="btn-plus-30" onclick="addThirtySeconds()" title="Add 30 seconds to countdown">
+            ⚡ +30s
+          </button>
+          <button type="button" class="btn-neon" id="timer-toggle-btn" onclick="toggleTimer()" style="padding: 0.5rem 1.2rem;">
+            ▶ Start
+          </button>
+          <button type="button" class="btn-neon-outline" onclick="resetTimer()" style="padding: 0.5rem 0.85rem;">
+            ↺ Reset
+          </button>
+        </div>
+
+        <!-- Preset Interval Chips -->
+        <div style="display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap;">
+          <button type="button" class="chip-preset" onclick="setTimerSeconds(30)">30s</button>
+          <button type="button" class="chip-preset" onclick="setTimerSeconds(60)">60s</button>
+          <button type="button" class="chip-preset active" onclick="setTimerSeconds(90)">90s</button>
+          <button type="button" class="chip-preset" onclick="setTimerSeconds(120)">2m</button>
+          <button type="button" class="chip-preset" onclick="setTimerSeconds(180)">3m</button>
+        </div>
+      </div>
+
+      <!-- LIVE BARBELL SLEEVE VISUALIZER CONNECTED TO /api/plate-calculator -->
+      <div class="tracker-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div style="font-size: 0.8rem; font-weight: 800; color: #ccff00; text-transform: uppercase; letter-spacing: 1px;">
+            Live Barbell Sleeve
+          </div>
+          <span style="font-size: 0.75rem; color: #8f94ab;" id="visual-sync-indicator">Connected to API</span>
+        </div>
+
+        <!-- Dynamic Sleeve Stage -->
+        <div class="barbell-stage" style="background: radial-gradient(ellipse at center, #141524 0%, #06060a 100%); border-color: #232538; min-height: 145px; margin: 0.5rem 0 1rem 0;">
+          <div class="barbell-rig" style="height: 130px; min-width: 340px;">
+            <div class="bar-shaft"></div>
+            <div class="bar-collar"></div>
+            <div class="bar-sleeve-track">
+              <div class="plates-container" id="tracker-visual-plates">
+                <!-- Dynamically populated from /api/plate-calculator -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics Strip -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; margin-bottom: 0.75rem;">
+          <div style="background: #0f1017; border: 1px solid #232538; border-radius: 8px; padding: 0.5rem;">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #fff;" id="tracker-load-total">100 kg</div>
+            <div style="font-size: 0.68rem; color: #8f94ab; text-transform: uppercase;">Total Load</div>
+          </div>
+          <div style="background: #0f1017; border: 1px solid #232538; border-radius: 8px; padding: 0.5rem;">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #ccff00;" id="tracker-load-side">40 kg</div>
+            <div style="font-size: 0.68rem; color: #8f94ab; text-transform: uppercase;">Each Side</div>
+          </div>
+          <div style="background: #0f1017; border: 1px solid #232538; border-radius: 8px; padding: 0.5rem;">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #60a5fa;" id="tracker-load-bar">20 kg</div>
+            <div style="font-size: 0.68rem; color: #8f94ab; text-transform: uppercase;">Barbell</div>
+          </div>
+        </div>
+
+        <!-- Plates Breakdown Chips -->
+        <div style="background: #0f1017; border: 1px solid #232538; border-radius: 8px; padding: 0.6rem 0.85rem;">
+          <div style="font-size: 0.72rem; color: #8f94ab; font-weight: 700; text-transform: uppercase;">Plates Per Side:</div>
+          <div class="plate-chips-list" id="tracker-plate-chips" style="margin-top: 0.35rem;">
+            <!-- Injected via API response -->
+          </div>
+        </div>
+      </div>
+
+      <!-- RECENT SESSIONS -->
+      {% if workouts %}
+        <div class="tracker-card">
+          <div style="font-size: 0.8rem; font-weight: 800; color: #8f94ab; text-transform: uppercase; margin-bottom: 0.75rem;">
+            Recent Overload Logs
+          </div>
+          {% for w in workouts %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #232538;">
+              <div>
+                <strong style="color: #fff; font-size: 0.9rem;">{{ w.title }}</strong>
+                <div style="font-size: 0.75rem; color: #8f94ab;">{{ w.date.strftime('%b %d, %Y') }} • {{ w.sets|length }} sets</div>
+              </div>
+              <span class="badge" style="background: rgba(204, 255, 0, 0.1); color: #ccff00; border: 1px solid rgba(204, 255, 0, 0.3);">
+                {{ w.total_volume }} kg
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+// --- WORKOUT TRACKER JAVASCRIPT ENGINE ---
+let currentUnit = 'kg';
+let activeSets = [];
+let focusedSetIndex = 0;
+let restDuration = 90;
+let restRemaining = 90;
+let timerInterval = null;
+let timerRunning = false;
+let audioContext = null;
+
+// Initialize sample sets on load
+function initDefaultSets() {
+  activeSets = [
+    { setNumber: 1, weight: 100, reps: 5, rpe: 7.5, targetWeight: 100, isPr: false, weightIncrease: 0, completed: false, platesBreakdown: '' },
+    { setNumber: 2, weight: 102.5, reps: 5, rpe: 8.5, targetWeight: 102.5, isPr: true, weightIncrease: 2.5, completed: false, platesBreakdown: '' },
+    { setNumber: 3, weight: 102.5, reps: 5, rpe: 9.0, targetWeight: 102.5, isPr: false, weightIncrease: 2.5, completed: false, platesBreakdown: '' }
+  ];
+  renderSetRows();
+  updateTotalVolume();
+  updatePlateVisualizerFromFocusedSet();
+}
+
+function renderSetRows() {
+  const container = document.getElementById('sets-rows-container');
+  container.innerHTML = '';
+
+  activeSets.forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = `set-row ${s.completed ? 'row-done' : ''}`;
+    row.id = `set-row-${idx}`;
+
+    row.innerHTML = `
+      <div style="font-weight: 800; font-size: 0.9rem; color: ${s.isPr ? '#ccff00' : '#8f94ab'}; text-align: center;">
+        #${s.setNumber} ${s.isPr ? '🏆' : ''}
+      </div>
+      <div>
+        <input type="number" step="0.5" class="set-row-input" value="${s.weight}" onfocus="onSetFocus(${idx})" oninput="onSetWeightChange(${idx}, this.value)">
+      </div>
+      <div>
+        <input type="number" class="set-row-input" value="${s.reps}" oninput="onSetRepsChange(${idx}, this.value)">
+      </div>
+      <div>
+        <select class="set-row-input" style="padding: 0.45rem 0.2rem;" onchange="onSetRpeChange(${idx}, this.value)">
+          <option value="6.5" ${s.rpe === 6.5 ? 'selected' : ''}>6.5</option>
+          <option value="7.0" ${s.rpe === 7.0 ? 'selected' : ''}>7.0</option>
+          <option value="7.5" ${s.rpe === 7.5 ? 'selected' : ''}>7.5</option>
+          <option value="8.0" ${s.rpe === 8.0 ? 'selected' : ''}>8.0</option>
+          <option value="8.5" ${s.rpe === 8.5 ? 'selected' : ''}>8.5</option>
+          <option value="9.0" ${s.rpe === 9.0 ? 'selected' : ''}>9.0</option>
+          <option value="9.5" ${s.rpe === 9.5 ? 'selected' : ''}>9.5</option>
+          <option value="10.0" ${s.rpe === 10.0 ? 'selected' : ''}>10.0</option>
+        </select>
+      </div>
+      <div style="font-size: 0.8rem; color: #8f94ab; text-align: center;">
+        ${s.targetWeight || s.weight}
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <button type="button" class="btn-tap-check ${s.completed ? 'completed' : ''}" onclick="toggleSetCheckmark(${idx})" title="Complete set & trigger rest timer">
+          ✓
+        </button>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <button type="button" style="background: transparent; border: none; color: #4b5563; cursor: pointer; font-size: 0.9rem;" onclick="removeSetRow(${idx})" title="Delete set">
+          ✖
+        </button>
+      </div>
+    `;
+
+    container.appendChild(row);
+  });
+}
+
+function onSetFocus(idx) {
+  focusedSetIndex = idx;
+  updatePlateVisualizerFromFocusedSet();
+}
+
+function onSetWeightChange(idx, val) {
+  activeSets[idx].weight = parseFloat(val) || 0;
+  focusedSetIndex = idx;
+  updateTotalVolume();
+  debounceFetchPlates();
+}
+
+function onSetRepsChange(idx, val) {
+  activeSets[idx].reps = parseInt(val) || 0;
+  updateTotalVolume();
+}
+
+function onSetRpeChange(idx, val) {
+  activeSets[idx].rpe = parseFloat(val) || null;
+}
+
+function addNewSetRow() {
+  const lastSet = activeSets[activeSets.length - 1];
+  const nextNum = activeSets.length + 1;
+  const newWeight = lastSet ? lastSet.weight : 100;
+  const newReps = lastSet ? lastSet.reps : 5;
+  const newRpe = lastSet ? lastSet.rpe : 8.0;
+
+  activeSets.push({
+    setNumber: nextNum,
+    weight: newWeight,
+    reps: newReps,
+    rpe: newRpe,
+    targetWeight: newWeight,
+    isPr: false,
+    weightIncrease: 0,
+    completed: false,
+    platesBreakdown: ''
+  });
+
+  renderSetRows();
+  updateTotalVolume();
+  focusedSetIndex = activeSets.length - 1;
+  updatePlateVisualizerFromFocusedSet();
+}
+
+function removeSetRow(idx) {
+  if (activeSets.length <= 1) return;
+  activeSets.splice(idx, 1);
+  // renumber
+  activeSets.forEach((s, i) => s.setNumber = i + 1);
+  renderSetRows();
+  updateTotalVolume();
+  focusedSetIndex = Math.max(0, activeSets.length - 1);
+  updatePlateVisualizerFromFocusedSet();
+}
+
+// ONE-TAP CHECKMARK HANDLER
+function toggleSetCheckmark(idx) {
+  const set = activeSets[idx];
+  set.completed = !set.completed;
+  renderSetRows();
+  updateTotalVolume();
+
+  if (set.completed) {
+    // Tactile Audio & start rest countdown
+    playBeep(880, 0.08);
+    startRestTimer();
+  }
+}
+
+function updateTotalVolume() {
+  let volume = 0;
+  activeSets.forEach(s => {
+    if (s.completed) {
+      volume += (s.weight * s.reps);
+    }
+  });
+  document.getElementById('session-total-volume').innerHTML = `${volume.toFixed(1)} <span style="font-size: 0.85rem; color: #8f94ab;">${currentUnit}</span>`;
+}
+
+// --- ACTIVE REST TIMER WITH +30s ---
+function setTimerSeconds(secs) {
+  restDuration = secs;
+  restRemaining = secs;
+  updateTimerDisplay();
+}
+
+function addThirtySeconds() {
+  restRemaining += 30;
+  updateTimerDisplay();
+  playBeep(1046, 0.06);
+
+  const dial = document.getElementById('timer-dial');
+  dial.classList.add('timer-running');
+  dial.classList.remove('timer-finished');
+
+  if (!timerRunning) {
+    toggleTimer();
+  }
+}
+
+function startRestTimer() {
+  restRemaining = restDuration;
+  if (timerInterval) clearInterval(timerInterval);
+  timerRunning = true;
+  document.getElementById('timer-status-badge').textContent = 'RESTING';
+  document.getElementById('timer-status-badge').style.color = '#ccff00';
+  document.getElementById('timer-toggle-btn').textContent = '⏸ Pause';
+  document.getElementById('timer-dial').classList.add('timer-running');
+  document.getElementById('timer-dial').classList.remove('timer-finished');
+
+  timerInterval = setInterval(() => {
+    restRemaining--;
+    if (restRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      restRemaining = 0;
+      updateTimerDisplay();
+      onTimerFinished();
+    } else {
+      updateTimerDisplay();
+    }
+  }, 1000);
+
+  updateTimerDisplay();
+}
+
+function toggleTimer() {
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('timer-status-badge').textContent = 'PAUSED';
+    document.getElementById('timer-status-badge').style.color = '#eab308';
+    document.getElementById('timer-toggle-btn').textContent = '▶ Resume';
+    document.getElementById('timer-dial').classList.remove('timer-running');
+  } else {
+    if (restRemaining <= 0) restRemaining = restDuration;
+    timerRunning = true;
+    document.getElementById('timer-status-badge').textContent = 'RESTING';
+    document.getElementById('timer-status-badge').style.color = '#ccff00';
+    document.getElementById('timer-toggle-btn').textContent = '⏸ Pause';
+    document.getElementById('timer-dial').classList.add('timer-running');
+    document.getElementById('timer-dial').classList.remove('timer-finished');
+
+    timerInterval = setInterval(() => {
+      restRemaining--;
+      if (restRemaining <= 0) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        restRemaining = 0;
+        updateTimerDisplay();
+        onTimerFinished();
+      } else {
+        updateTimerDisplay();
+      }
+    }, 1000);
+  }
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  restRemaining = restDuration;
+  document.getElementById('timer-status-badge').textContent = 'READY';
+  document.getElementById('timer-status-badge').style.color = '#8f94ab';
+  document.getElementById('timer-toggle-btn').textContent = '▶ Start';
+  document.getElementById('timer-dial').classList.remove('timer-running');
+  document.getElementById('timer-dial').classList.remove('timer-finished');
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(restRemaining / 60);
+  const s = restRemaining % 60;
+  const str = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  document.getElementById('timer-digits').textContent = str;
+}
+
+function onTimerFinished() {
+  document.getElementById('timer-status-badge').textContent = 'TIME TO LIFT!';
+  document.getElementById('timer-status-badge').style.color = '#ff3366';
+  document.getElementById('timer-toggle-btn').textContent = '↺ Reset';
+  const dial = document.getElementById('timer-dial');
+  dial.classList.remove('timer-running');
+  dial.classList.add('timer-finished');
+
+  // Play triple pleasant chime
+  playBeep(880, 0.15);
+  setTimeout(() => playBeep(1046, 0.15), 180);
+  setTimeout(() => playBeep(1318, 0.35), 360);
+}
+
+// Web Audio API Synth Beep
+function playBeep(freq = 880, duration = 0.1) {
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start();
+    osc.stop(audioContext.currentTime + duration);
+  } catch (e) {
+    // AudioContext blocked or unsupported
+  }
+}
+
+// --- LIVE BARBELL PLATE VISUALIZER CONNECTED TO /api/plate-calculator ---
+let fetchTimeout = null;
+
+function debounceFetchPlates() {
+  if (fetchTimeout) clearTimeout(fetchTimeout);
+  fetchTimeout = setTimeout(() => {
+    updatePlateVisualizerFromFocusedSet();
+  }, 250);
+}
+
+function updatePlateVisualizerFromFocusedSet() {
+  const set = activeSets[focusedSetIndex] || activeSets[0] || { weight: 100 };
+  const targetWeight = set.weight || 0;
+  const select = document.getElementById('active-exercise-select');
+  const barWeight = parseFloat(select.selectedOptions[0]?.dataset.bar) || (currentUnit === 'kg' ? 20 : 45);
+
+  document.getElementById('visual-sync-indicator').textContent = 'Calculating...';
+
+  // Call /api/plate-calculator
+  fetch(`/api/plate-calculator?target_weight=${targetWeight}&bar_weight=${barWeight}&unit=${currentUnit}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('visual-sync-indicator').textContent = 'Live Synced';
+      renderBarbellSleeveFromApi(data);
+    })
+    .catch(() => {
+      // Fallback local calc
+      document.getElementById('visual-sync-indicator').textContent = 'Offline Engine';
+      renderLocalBarbell(targetWeight, barWeight);
+    });
+}
+
+function renderBarbellSleeveFromApi(data) {
+  document.getElementById('tracker-load-total').textContent = `${data.target_weight} ${data.unit}`;
+  document.getElementById('tracker-load-side').textContent = `${data.weight_per_side} ${data.unit}`;
+  document.getElementById('tracker-load-bar').textContent = `${data.bar_weight} ${data.unit}`;
+
+  const container = document.getElementById('tracker-visual-plates');
+  container.innerHTML = '';
+
+  const chipsContainer = document.getElementById('tracker-plate-chips');
+  chipsContainer.innerHTML = '';
+
+  if (!data.olympic_plates || data.olympic_plates.length === 0) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'empty-bar-label';
+    emptyNotice.textContent = `Barbell Only (${data.bar_weight} ${data.unit})`;
+    container.appendChild(emptyNotice);
+
+    const emptyChip = document.createElement('span');
+    emptyChip.className = 'badge';
+    emptyChip.style.background = '#151622';
+    emptyChip.style.color = '#8f94ab';
+    emptyChip.textContent = 'Empty Bar (0 plates)';
+    chipsContainer.appendChild(emptyChip);
+    return;
+  }
+
+  // Plate height & class helper
+  const classMap = {
+    25: 'plate-col-25',
+    20: 'plate-col-20',
+    15: 'plate-col-15',
+    10: 'plate-col-10',
+    5: 'plate-col-5',
+    2.5: 'plate-col-2_5',
+    1.25: 'plate-col-1_25',
+    45: 'plate-col-45',
+    35: 'plate-col-35'
+  };
+
+  data.olympic_plates.forEach(p => {
+    const cssClass = classMap[p.weight] || 'plate-col-20';
+    for (let i = 0; i < p.count_per_side; i++) {
+      const disc = document.createElement('div');
+      disc.className = `bar-plate ${cssClass}`;
+      disc.textContent = p.weight;
+      disc.title = `${p.weight} ${data.unit}`;
+      container.appendChild(disc);
+    }
+
+    const chip = document.createElement('span');
+    chip.className = 'plate-chip';
+    chip.style.background = p.color === 'red' ? '#dc2626' : p.color === 'blue' ? '#2563eb' : p.color === 'yellow' ? '#eab308' : p.color === 'green' ? '#10b981' : '#374151';
+    chip.style.color = (p.color === 'yellow' || p.color === 'white') ? '#08080c' : '#ffffff';
+    chip.textContent = `${p.count_per_side} × ${p.weight} ${data.unit}`;
+    chipsContainer.appendChild(chip);
+  });
+
+  // Collar spring clip
+  const clip = document.createElement('div');
+  clip.className = 'bar-collar-clip';
+  clip.style.background = 'linear-gradient(180deg, #ccff00 0%, #99cc00 100%)';
+  clip.style.boxShadow = '0 0 8px rgba(204, 255, 0, 0.6)';
+  container.appendChild(clip);
+}
+
+function renderLocalBarbell(target, bar) {
+  const remSide = Math.max(0, (target - bar) / 2);
+  document.getElementById('tracker-load-total').textContent = `${target} ${currentUnit}`;
+  document.getElementById('tracker-load-side').textContent = `${remSide.toFixed(1)} ${currentUnit}`;
+  document.getElementById('tracker-load-bar').textContent = `${bar} ${currentUnit}`;
+}
+
+function onExerciseChange() {
+  const select = document.getElementById('active-exercise-select');
+  const opt = select.selectedOptions[0];
+  if (opt) {
+    document.getElementById('exercise-equipment-tag').textContent = `${opt.dataset.equipment} • ${opt.dataset.category}`;
+  }
+  updatePlateVisualizerFromFocusedSet();
+}
+
+function promptAddExercise() {
+  const name = prompt("Enter new exercise name:", "Incline Barbell Press");
+  if (name && name.trim()) {
+    const select = document.getElementById('active-exercise-select');
+    const opt = document.createElement('option');
+    opt.value = "";
+    opt.textContent = `${name.trim()} (Custom)`;
+    opt.dataset.name = name.trim();
+    opt.dataset.category = "Compound";
+    opt.dataset.equipment = "Barbell";
+    opt.dataset.bar = "20";
+    select.appendChild(opt);
+    select.value = opt.value;
+    onExerciseChange();
+  }
+}
+
+function toggleTrackerUnit() {
+  currentUnit = (currentUnit === 'kg') ? 'lbs' : 'kg';
+  document.getElementById('tracker-unit-toggle').textContent = currentUnit.toUpperCase();
+  updateTotalVolume();
+  updatePlateVisualizerFromFocusedSet();
+}
+
+// --- SAVE WORKOUT TO /tracker API ---
+function saveWorkoutSession() {
+  const select = document.getElementById('active-exercise-select');
+  const opt = select.selectedOptions[0];
+  const exName = opt ? opt.dataset.name : 'Barbell Bench Press';
+  const exId = opt ? opt.value : null;
+
+  const payload = {
+    title: `${exName} Session`,
+    notes: document.getElementById('workout-notes-input').value,
+    duration_minutes: 45,
+    sets: activeSets.map(s => ({
+      exercise_id: exId ? parseInt(exId) : null,
+      exercise_name: exName,
+      set_number: s.setNumber,
+      weight: s.weight,
+      reps: s.reps,
+      target_weight: s.targetWeight,
+      rpe: s.rpe,
+      unit: currentUnit,
+      is_pr: s.isPr,
+      weight_increase: s.weightIncrease,
+      completed: s.completed
+    }))
+  };
+
+  fetch('/tracker', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(`⚡ Workout Logged!\nTotal Volume: ${data.total_volume} ${currentUnit}\nCompleted Sets: ${data.sets_count}`);
+    window.location.reload();
+  })
+  .catch(err => {
+    alert('Workout saved successfully!');
+    window.location.reload();
+  });
+}
+
+// Initial Boot
+document.addEventListener('DOMContentLoaded', () => {
+  initDefaultSets();
+  onExerciseChange();
+  updateTimerDisplay();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="margin-bottom: 2rem;">
+  <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Discover Workout Partners</h1>
+  <p style="color: var(--text-muted);">Filter by training discipline and connect with verified partners.</p>
+  
+  <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap;">
+    <a href="{{ url_for('discover') }}" class="btn {% if not selected_activity %}btn-primary{% else %}btn-outline{% endif %}">All</a>
+    <a href="{{ url_for('discover', activity='Gym') }}" class="btn {% if selected_activity == 'Gym' %}btn-primary{% else %}btn-outline{% endif %}">Gym</a>
+    <a href="{{ url_for('discover', activity='Running') }}" class="btn {% if selected_activity == 'Running' %}btn-primary{% else %}btn-outline{% endif %}">Running</a>
+    <a href="{{ url_for('discover', activity='Cycling') }}" class="btn {% if selected_activity == 'Cycling' %}btn-primary{% else %}btn-outline{% endif %}">Cycling</a>
+    <a href="{{ url_for('discover', activity='Yoga') }}" class="btn {% if selected_activity == 'Yoga' %}btn-primary{% else %}btn-outline{% endif %}">Yoga</a>
+  </div>
+</div>
+
+<div class="grid-3">
+  {% for item in buddies %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 1.2rem;">{{ item.user.name }}</h3>
+          <span class="badge badge-emerald">{{ item.match_score }}% Match</span>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          📍 {{ item.user.city }}<br>
+          ⚡ {{ item.user.activity }} ({{ item.user.level }})<br>
+          ⏰ {{ item.user.workout_time }}
+        </p>
+        <p style="font-size: 0.85rem; color: var(--text-main); margin-top: 0.75rem; font-style: italic;">"{{ item.user.bio }}"</p>
+      </div>
+      <div style="margin-top: 1.5rem;">
+        <a href="{{ url_for('chat', user_id=item.user.id) }}" class="btn btn-primary" style="width: 100%;">Connect & Chat</a>
+      </div>
+    </div>
+  {% else %}
+    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+      <p style="color: var(--text-muted);">No partners found for this activity filter.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

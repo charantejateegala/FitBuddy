@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width: 440px; margin: 2rem auto;">
+  <div class="card">
+    <h2 id="form-title" style="text-align: center; margin-bottom: 1.5rem;">Sign In to FitBuddy</h2>
+    <form method="POST" action="{{ url_for('auth') }}">
+      <input type="hidden" name="action" id="action-type" value="login">
+      
+      <div class="form-group" id="name-group" style="display: none;">
+        <label>Full Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Chiranjeevi">
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" name="email" class="form-control" required placeholder="you@example.com">
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" class="form-control" required placeholder="••••••••">
+      </div>
+
+      <div id="register-fields" style="display: none;">
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" name="city" class="form-control" placeholder="Hyderabad">
+        </div>
+        <div class="form-group">
+          <label>Primary Activity</label>
+          <select name="activity" class="form-control">
+            <option value="Gym">Gym / Weightlifting</option>
+            <option value="Running">Running / Cardio</option>
+            <option value="Cycling">Cycling</option>
+            <option value="Yoga">Yoga / Calisthenics</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Experience Level</label>
+          <select name="level" class="form-control">
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign In</button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+      <span id="toggle-text">Need an account?</span>
+      <a href="javascript:void(0)" onclick="toggleMode()" id="toggle-link" style="color: var(--accent-emerald); font-weight: 600; text-decoration: none; margin-left: 0.25rem;">Create Account</a>
+    </div>
+
+    <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+      <strong>Demo Credentials:</strong><br>
+      Email: <code>chiranjeevi@example.com</code> | Password: <code>demo1234</code>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isRegister = false;
+  function toggleMode() {
+    isRegister = !isRegister;
+    document.getElementById('action-type').value = isRegister ? 'register' : 'login';
+    document.getElementById('form-title').innerText = isRegister ? 'Create Your Account' : 'Sign In to FitBuddy';
+    document.getElementById('submit-btn').innerText = isRegister ? 'Register' : 'Sign In';
+    document.getElementById('name-group').style.display = isRegister ? 'block' : 'none';
+    document.getElementById('register-fields').style.display = isRegister ? 'block' : 'none';
+    document.getElementById('toggle-text').innerText = isRegister ? 'Already have an account?' : 'Need an account?';
+    document.getElementById('toggle-link').innerText = isRegister ? 'Sign In' : 'Create Account';
+  }
+</script>
+{% endblock %}

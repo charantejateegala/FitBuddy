@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Safety & Community Standards</h1>
+    <p style="color: var(--text-muted);">FitBuddy is built on mutual accountability, security, and physical safety.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">1. Public Locations</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Always schedule first-time sessions at registered fitness centers, public parks, or track stadiums.</p>
+    </div>
+    <div class="card">
+      <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">2. Emergency Contacts</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Share your planned itinerary and location with a trusted friend before meeting an unverified partner.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <h2 style="font-size: 1.3rem; margin-bottom: 1rem; color: #fca5a5;">Incident Reporting Center</h2>
+    <form method="POST">
+      <div class="form-group">
+        <label>Select User to Report</label>
+        <select name="user_id" class="form-control" required>
+          {% for u in users %}
+            <option value="{{ u.id }}">{{ u.name }} ({{ u.email }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Reason for Report</label>
+        <textarea name="reason" rows="3" class="form-control" placeholder="Describe suspicious, inappropriate, or unverified behavior..." required></textarea>
+      </div>
+
+      <button type="submit" class="btn" style="background-color: var(--danger); color: white;">Submit Incident Report</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

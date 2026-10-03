@@ -1,0 +1,582 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="margin-bottom: 2rem;">
+  <h1 style="font-size: 2rem; margin-bottom: 0.4rem;">Workout Sessions & Plate Math</h1>
+  <p style="color: var(--text-muted);">Calculate exact barbell plate distribution, preview sleeve loading, and schedule lifting sessions with gym partners.</p>
+</div>
+
+<!-- AUTOMATIC PLATE-MATH CALCULATOR -->
+<div class="card calc-card" id="plate-calculator" style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+    <div>
+      <h2 style="font-size: 1.35rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>🏋️</span> Automatic Barbell Plate-Math Calculator
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Real-time Olympic plate distribution and visual barbell sleeve loadout.</p>
+    </div>
+    
+    <!-- Unit Selector -->
+    <div style="display: flex; gap: 0.25rem; background: var(--bg-card); padding: 0.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+      <button type="button" class="btn btn-primary" id="unit-btn-kg" onclick="setUnit('kg')" style="padding: 0.35rem 0.85rem; font-size: 0.85rem;">KG</button>
+      <button type="button" class="btn btn-outline" id="unit-btn-lbs" onclick="setUnit('lbs')" style="padding: 0.35rem 0.85rem; font-size: 0.85rem; border: none;">LBS</button>
+    </div>
+  </div>
+
+  <div class="grid-2" style="gap: 1.5rem; align-items: start;">
+    <!-- Inputs & Steppers -->
+    <div>
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        <label style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Target Total Weight (<span class="unit-label">kg</span>)</span>
+          <span style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600;" id="calc-status-badge">Exact Match</span>
+        </label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="number" id="calc-target-weight" class="form-control" style="font-size: 1.3rem; font-weight: 700; padding: 0.6rem 0.85rem;" value="100" min="0" step="0.5" oninput="runCalculator()">
+          <span style="font-weight: 700; font-size: 1.1rem; color: var(--text-muted); width: 40px;" class="unit-label">kg</span>
+        </div>
+      </div>
+
+      <!-- Quick Steppers -->
+      <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.5px;">Quick Adjust</div>
+        <div class="stepper-btn-group">
+          <button type="button" class="btn-step step-neg" onclick="adjustWeight(-10)">-10</button>
+          <button type="button" class="btn-step step-neg" onclick="adjustWeight(-5)">-5</button>
+          <button type="button" class="btn-step step-neg" onclick="adjustWeight(-2.5)">-2.5</button>
+          <button type="button" class="btn-step step-pos" onclick="adjustWeight(2.5)">+2.5</button>
+          <button type="button" class="btn-step step-pos" onclick="adjustWeight(5)">+5</button>
+          <button type="button" class="btn-step step-pos" onclick="adjustWeight(10)">+10</button>
+        </div>
+      </div>
+
+      <!-- Quick Standard Targets -->
+      <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.5px;">Standard Plate Benchmarks</div>
+        <div class="preset-strip" id="preset-strip-container">
+          <!-- Populated by JS based on unit -->
+        </div>
+      </div>
+
+      <!-- Barbell Weight & Plate Selection -->
+      <div class="grid-2" style="gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label>Barbell Type / Weight</label>
+          <select id="calc-bar-weight" class="form-control" onchange="runCalculator()" style="padding: 0.55rem 0.75rem; font-size: 0.85rem;">
+            <option value="20">Olympic Men's (20 kg / 44 lb)</option>
+            <option value="15">Olympic Women's (15 kg / 33 lb)</option>
+            <option value="10">Technique Bar (10 kg / 22 lb)</option>
+            <option value="25">Squat Bar (25 kg / 55 lb)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label>Available Plates</label>
+          <div class="plate-inventory-pills" id="inventory-pills-container">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Barbell Visualizer & Metrics -->
+    <div>
+      <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem;">
+        Sleeve Loading Simulation (One Side)
+      </div>
+
+      <!-- Visual Stage -->
+      <div class="barbell-stage">
+        <div class="barbell-rig">
+          <!-- Center Bar Shaft -->
+          <div class="bar-shaft"></div>
+          <!-- Barbell Collar (Plate Stop) -->
+          <div class="bar-collar"></div>
+          <!-- Barbell Sleeve with Plates -->
+          <div class="bar-sleeve-track">
+            <div class="plates-container" id="visual-plates-container">
+              <!-- Dynamically populated plate discs -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric Strip -->
+      <div class="metric-strip">
+        <div class="metric-box">
+          <div class="metric-value" id="metric-total">100 <span style="font-size: 0.85rem;" class="unit-label">kg</span></div>
+          <div class="metric-label">Total Load</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="metric-per-side" style="color: #60a5fa;">40 <span style="font-size: 0.85rem;" class="unit-label">kg</span></div>
+          <div class="metric-label">Each Side</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value" id="metric-bar" style="color: var(--accent-emerald);">20 <span style="font-size: 0.85rem;" class="unit-label">kg</span></div>
+          <div class="metric-label">Barbell</div>
+        </div>
+      </div>
+
+      <!-- Plate Breakdown List -->
+      <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Required Plates Per Side:</div>
+        <div class="plate-chips-list" id="plate-chips-display">
+          <!-- Rendered plate chips -->
+        </div>
+        <div id="remainder-warning" style="display: none; margin-top: 0.5rem; font-size: 0.8rem; color: #fca5a5;">
+          ⚠️ Remainder of <span id="remainder-amount">0</span> cannot be loaded with available plates. Closest load is <span id="closest-amount">0</span>.
+        </div>
+      </div>
+
+      <!-- Link to Workout Form Button -->
+      <div style="margin-top: 1rem;">
+        <button type="button" class="btn btn-primary" onclick="applyToSessionForm()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem;">
+          <span>⚡</span>
+          <span>Apply Load to Workout Session Form</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- WORKOUT SESSION CREATION FORM -->
+  <div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Create Workout Session</h2>
+    <div class="card" id="session-form-card">
+      <form method="POST" id="workout-session-form">
+        <div class="form-group">
+          <label>Session Title</label>
+          <input type="text" name="title" id="session-title" class="form-control" placeholder="e.g. Heavy Barbell Squats & Deadlifts" required>
+        </div>
+
+        <div class="form-group">
+          <label>Discipline</label>
+          <select name="activity" id="session-activity" class="form-control" onchange="toggleWorkoutLoadFields()">
+            <option value="Gym" selected>Gym / Barbell Strength</option>
+            <option value="Running">Running</option>
+            <option value="Cycling">Cycling</option>
+            <option value="Yoga">Yoga</option>
+          </select>
+        </div>
+
+        <!-- BARBELL WORKOUT LOGGING FIELDS -->
+        <div id="workout-load-card" class="workout-load-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <label style="color: var(--accent-emerald); font-weight: 700; margin: 0; font-size: 0.9rem;">
+              🏋️ Barbell Target Load & Plates
+            </label>
+            <button type="button" class="btn btn-outline" onclick="syncCalculatorToForm()" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+              🔄 Sync From Calculator
+            </button>
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group" style="margin-bottom: 0.5rem;">
+              <label>Target Weight</label>
+              <input type="number" step="0.5" name="target_weight" id="form_target_weight" class="form-control" placeholder="e.g. 100" oninput="syncFormToCalculator()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.5rem;">
+              <label>Bar Weight</label>
+              <input type="number" step="0.5" name="bar_weight" id="form_bar_weight" class="form-control" value="20" oninput="syncFormToCalculator()">
+            </div>
+          </div>
+
+          <input type="hidden" name="unit" id="form_unit" value="kg">
+          <input type="hidden" name="plates_breakdown" id="form_plates_breakdown" value="">
+
+          <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted); background: var(--bg-card); padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border-color);">
+            Plate Setup: <strong id="form-plates-preview" style="color: var(--text-main);">Configure with calculator above</strong>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Date & Time</label>
+          <input type="text" name="date_time" class="form-control" placeholder="Saturday at 06:30 AM" required>
+        </div>
+
+        <div class="form-group">
+          <label>Location / Landmark</label>
+          <input type="text" name="location" class="form-control" placeholder="Cult Fit, Jubilee Hills, Hyderabad" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Host Session</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- OPEN SESSIONS LIST -->
+  <div>
+    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Open Sessions</h2>
+    {% for s in sessions %}
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <h3 style="font-size: 1.15rem;">{{ s.title }}</h3>
+          <span class="badge badge-emerald">{{ s.activity }}</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0;">
+          🕒 {{ s.date_time }}<br>
+          📍 {{ s.location }}
+        </p>
+
+        <!-- Barbell Load Badge if logged -->
+        {% if s.target_weight %}
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 0.6rem 0.85rem; margin: 0.6rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+              <span style="font-weight: 700; color: var(--accent-emerald);">
+                🏋️ {{ s.target_weight }} {{ s.unit or 'kg' }} Total Load
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">
+                Bar: {{ s.bar_weight or 20 }} {{ s.unit or 'kg' }}
+              </span>
+            </div>
+            {% if s.plates_breakdown %}
+              <div style="font-size: 0.8rem; color: var(--text-main); margin-top: 0.3rem;">
+                <strong>Per side:</strong> {{ s.plates_breakdown }}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+          Hosted by: <strong>{{ s.creator.name }}</strong>
+        </p>
+      </div>
+    {% else %}
+      <div class="card"><p style="color: var(--text-muted);">No workouts scheduled right now.</p></div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+// --- CLIENT-SIDE AUTOMATIC PLATE-MATH ENGINE ---
+const PLATE_SPECS = {
+  kg: [
+    { weight: 25, label: '25 kg', cssClass: 'plate-col-25', bg: '#dc2626', color: '#fff' },
+    { weight: 20, label: '20 kg', cssClass: 'plate-col-20', bg: '#2563eb', color: '#fff' },
+    { weight: 15, label: '15 kg', cssClass: 'plate-col-15', bg: '#eab308', color: '#1e293b' },
+    { weight: 10, label: '10 kg', cssClass: 'plate-col-10', bg: '#10b981', color: '#fff' },
+    { weight: 5,  label: '5 kg',  cssClass: 'plate-col-5',  bg: '#f8fafc', color: '#0f172a' },
+    { weight: 2.5, label: '2.5 kg', cssClass: 'plate-col-2_5', bg: '#1e293b', color: '#fff' },
+    { weight: 1.25, label: '1.25 kg', cssClass: 'plate-col-1_25', bg: '#94a3b8', color: '#0f172a' }
+  ],
+  lbs: [
+    { weight: 45, label: '45 lb', cssClass: 'plate-col-45', bg: '#2563eb', color: '#fff' },
+    { weight: 35, label: '35 lb', cssClass: 'plate-col-35', bg: '#eab308', color: '#1e293b' },
+    { weight: 25, label: '25 lb', cssClass: 'plate-col-25-lb', bg: '#10b981', color: '#fff' },
+    { weight: 10, label: '10 lb', cssClass: 'plate-col-10-lb', bg: '#1e293b', color: '#fff' },
+    { weight: 5,  label: '5 lb',  cssClass: 'plate-col-5-lb',  bg: '#f8fafc', color: '#0f172a' },
+    { weight: 2.5, label: '2.5 lb', cssClass: 'plate-col-2_5-lb', bg: '#94a3b8', color: '#0f172a' }
+  ]
+};
+
+const PRESETS = {
+  kg: [
+    { label: '60 kg (1 plate)', weight: 60 },
+    { label: '100 kg (2 plates)', weight: 100 },
+    { label: '140 kg (3 plates)', weight: 140 },
+    { label: '180 kg (4 plates)', weight: 180 },
+    { label: '220 kg (5 plates)', weight: 220 }
+  ],
+  lbs: [
+    { label: '135 lb (1 plate)', weight: 135 },
+    { label: '225 lb (2 plates)', weight: 225 },
+    { label: '315 lb (3 plates)', weight: 315 },
+    { label: '405 lb (4 plates)', weight: 405 },
+    { label: '495 lb (5 plates)', weight: 495 }
+  ]
+};
+
+let currentUnit = 'kg';
+let enabledPlates = {
+  kg: [25, 20, 15, 10, 5, 2.5, 1.25],
+  lbs: [45, 35, 25, 10, 5, 2.5]
+};
+
+function setUnit(unit) {
+  currentUnit = unit;
+  document.getElementById('form_unit').value = unit;
+  
+  const btnKg = document.getElementById('unit-btn-kg');
+  const btnLbs = document.getElementById('unit-btn-lbs');
+  if (unit === 'kg') {
+    btnKg.className = 'btn btn-primary';
+    btnKg.style.border = 'none';
+    btnLbs.className = 'btn btn-outline';
+    btnLbs.style.border = 'none';
+    document.getElementById('calc-bar-weight').value = '20';
+    document.getElementById('calc-target-weight').value = '100';
+  } else {
+    btnLbs.className = 'btn btn-primary';
+    btnLbs.style.border = 'none';
+    btnKg.className = 'btn btn-outline';
+    btnKg.style.border = 'none';
+    document.getElementById('calc-bar-weight').value = '45';
+    document.getElementById('calc-target-weight').value = '225';
+  }
+
+  document.querySelectorAll('.unit-label').forEach(el => el.textContent = unit);
+  renderPresets();
+  renderInventoryPills();
+  runCalculator();
+}
+
+function renderPresets() {
+  const container = document.getElementById('preset-strip-container');
+  container.innerHTML = '';
+  const list = PRESETS[currentUnit] || [];
+  const currentVal = parseFloat(document.getElementById('calc-target-weight').value) || 0;
+
+  list.forEach(p => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip-preset' + (Math.abs(currentVal - p.weight) < 0.1 ? ' active' : '');
+    chip.textContent = p.label;
+    chip.onclick = () => {
+      document.getElementById('calc-target-weight').value = p.weight;
+      runCalculator();
+    };
+    container.appendChild(chip);
+  });
+}
+
+function renderInventoryPills() {
+  const container = document.getElementById('inventory-pills-container');
+  container.innerHTML = '';
+  const specs = PLATE_SPECS[currentUnit] || [];
+
+  specs.forEach(s => {
+    const isEnabled = enabledPlates[currentUnit].includes(s.weight);
+    const pill = document.createElement('div');
+    pill.className = 'inv-pill' + (isEnabled ? ' active' : '');
+    pill.textContent = s.label;
+    pill.onclick = () => {
+      togglePlate(s.weight);
+    };
+    container.appendChild(pill);
+  });
+}
+
+function togglePlate(weight) {
+  const arr = enabledPlates[currentUnit];
+  const idx = arr.indexOf(weight);
+  if (idx > -1) {
+    if (arr.length > 1) { // keep at least 1 plate
+      arr.splice(idx, 1);
+    }
+  } else {
+    arr.push(weight);
+  }
+  renderInventoryPills();
+  runCalculator();
+}
+
+function adjustWeight(delta) {
+  const input = document.getElementById('calc-target-weight');
+  let val = (parseFloat(input.value) || 0) + delta;
+  if (val < 0) val = 0;
+  input.value = Math.round(val * 10) / 10;
+  runCalculator();
+}
+
+function calculatePlateDistribution(target, bar, unit, availableList) {
+  if (target < bar) {
+    return {
+      perSide: 0,
+      breakdown: {},
+      summary: `Bar only (Target is less than bar weight of ${bar} ${unit})`,
+      achieved: bar,
+      remainder: 0
+    };
+  }
+
+  const remSide = (target - bar) / 2.0;
+  const denoms = availableList.slice().sort((a, b) => b - a);
+  const breakdown = {};
+  let rem = Math.round(remSide * 1000) / 1000;
+
+  for (const p of denoms) {
+    if (p <= 0) continue;
+    const cnt = Math.floor(Math.round((rem / p) * 1000) / 1000);
+    if (cnt > 0) {
+      breakdown[p] = cnt;
+      rem = Math.round((rem - (cnt * p)) * 1000) / 1000;
+    }
+  }
+
+  const parts = Object.entries(breakdown).map(([p, cnt]) => `${cnt} × ${p} ${unit}`);
+  const summary = parts.length > 0 ? parts.join(', ') + ' per side' : `Bar only (0 ${unit} / side)`;
+  const achieved = Math.round((bar + ((remSide - rem) * 2)) * 100) / 100;
+  const remainder = Math.round(rem * 2 * 100) / 100;
+
+  return {
+    perSide: Math.round(remSide * 100) / 100,
+    breakdown,
+    summary,
+    achieved,
+    remainder
+  };
+}
+
+function runCalculator() {
+  const target = parseFloat(document.getElementById('calc-target-weight').value) || 0;
+  const bar = parseFloat(document.getElementById('calc-bar-weight').value) || (currentUnit === 'kg' ? 20 : 45);
+  const res = calculatePlateDistribution(target, bar, currentUnit, enabledPlates[currentUnit]);
+
+  // Update metrics
+  document.getElementById('metric-total').innerHTML = `${target} <span style="font-size: 0.85rem;" class="unit-label">${currentUnit}</span>`;
+  document.getElementById('metric-per-side').innerHTML = `${res.perSide} <span style="font-size: 0.85rem;" class="unit-label">${currentUnit}</span>`;
+  document.getElementById('metric-bar').innerHTML = `${bar} <span style="font-size: 0.85rem;" class="unit-label">${currentUnit}</span>`;
+
+  // Status badge & remainder warning
+  const statusBadge = document.getElementById('calc-status-badge');
+  const remainderBox = document.getElementById('remainder-warning');
+  if (res.remainder > 0.01) {
+    statusBadge.textContent = `Closest: ${res.achieved} ${currentUnit}`;
+    statusBadge.style.color = '#f87171';
+    remainderBox.style.display = 'block';
+    document.getElementById('remainder-amount').textContent = `${res.remainder} ${currentUnit}`;
+    document.getElementById('closest-amount').textContent = `${res.achieved} ${currentUnit}`;
+  } else {
+    statusBadge.textContent = 'Exact Match';
+    statusBadge.style.color = 'var(--accent-emerald)';
+    remainderBox.style.display = 'none';
+  }
+
+  // Update Visual Barbell Plates
+  const visualContainer = document.getElementById('visual-plates-container');
+  visualContainer.innerHTML = '';
+
+  const entries = Object.entries(res.breakdown);
+  if (entries.length === 0) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'empty-bar-label';
+    emptyNotice.textContent = `Empty Bar (${bar} ${currentUnit})`;
+    visualContainer.appendChild(emptyNotice);
+  } else {
+    const specs = PLATE_SPECS[currentUnit] || [];
+    entries.forEach(([plateWeightStr, count]) => {
+      const pWeight = parseFloat(plateWeightStr);
+      const spec = specs.find(s => Math.abs(s.weight - pWeight) < 0.01) || {
+        cssClass: 'plate-col-20',
+        label: `${pWeight} ${currentUnit}`
+      };
+
+      for (let i = 0; i < count; i++) {
+        const plateEl = document.createElement('div');
+        plateEl.className = `bar-plate ${spec.cssClass}`;
+        plateEl.title = `${pWeight} ${currentUnit}`;
+        plateEl.textContent = pWeight;
+        visualContainer.appendChild(plateEl);
+      }
+    });
+
+    // Spring clamp clip
+    const clipEl = document.createElement('div');
+    clipEl.className = 'bar-collar-clip';
+    clipEl.title = 'Collar Clip';
+    visualContainer.appendChild(clipEl);
+  }
+
+  // Update Plate Chips Display
+  const chipsContainer = document.getElementById('plate-chips-display');
+  chipsContainer.innerHTML = '';
+  if (entries.length === 0) {
+    const emptyChip = document.createElement('span');
+    emptyChip.className = 'badge';
+    emptyChip.style.background = 'var(--bg-surface)';
+    emptyChip.textContent = `No plates needed (Barbell is ${bar} ${currentUnit})`;
+    chipsContainer.appendChild(emptyChip);
+  } else {
+    const specs = PLATE_SPECS[currentUnit] || [];
+    entries.forEach(([plateWeightStr, count]) => {
+      const pWeight = parseFloat(plateWeightStr);
+      const spec = specs.find(s => Math.abs(s.weight - pWeight) < 0.01) || {
+        bg: '#374151',
+        color: '#fff'
+      };
+      const chip = document.createElement('span');
+      chip.className = 'plate-chip';
+      chip.style.backgroundColor = spec.bg;
+      chip.style.color = spec.color;
+      chip.textContent = `${count} × ${pWeight} ${currentUnit}`;
+      chipsContainer.appendChild(chip);
+    });
+  }
+
+  // Highlight active preset chip if matched
+  document.querySelectorAll('#preset-strip-container .chip-preset').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.startsWith(`${target} `));
+  });
+}
+
+function applyToSessionForm() {
+  const target = parseFloat(document.getElementById('calc-target-weight').value) || 0;
+  const bar = parseFloat(document.getElementById('calc-bar-weight').value) || (currentUnit === 'kg' ? 20 : 45);
+  const res = calculatePlateDistribution(target, bar, currentUnit, enabledPlates[currentUnit]);
+
+  // Set activity to Gym
+  const activitySelect = document.getElementById('session-activity');
+  activitySelect.value = 'Gym';
+  toggleWorkoutLoadFields();
+
+  // Populate form fields
+  document.getElementById('form_target_weight').value = target > 0 ? target : '';
+  document.getElementById('form_bar_weight').value = bar;
+  document.getElementById('form_unit').value = currentUnit;
+  document.getElementById('form_plates_breakdown').value = res.summary;
+  document.getElementById('form-plates-preview').textContent = `${target} ${currentUnit} (${res.summary})`;
+
+  // Smart title suggestion if title is default/empty
+  const titleInput = document.getElementById('session-title');
+  if (!titleInput.value.trim() || titleInput.value.includes('Barbell') || titleInput.value.includes('Squat') || titleInput.value.includes('Deadlift')) {
+    titleInput.value = `Barbell Strength Session (${target} ${currentUnit})`;
+  }
+
+  // Visual feedback animation
+  const formCard = document.getElementById('session-form-card');
+  const loadBox = document.getElementById('workout-load-card');
+  loadBox.classList.remove('highlight-pulse');
+  void loadBox.offsetWidth; // trigger reflow
+  loadBox.classList.add('highlight-pulse');
+
+  // Scroll to form smoothly
+  formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function syncCalculatorToForm() {
+  applyToSessionForm();
+}
+
+function syncFormToCalculator() {
+  const formTarget = parseFloat(document.getElementById('form_target_weight').value) || 0;
+  const formBar = parseFloat(document.getElementById('form_bar_weight').value) || 20;
+
+  if (formTarget > 0) {
+    document.getElementById('calc-target-weight').value = formTarget;
+    document.getElementById('calc-bar-weight').value = formBar;
+    runCalculator();
+
+    const res = calculatePlateDistribution(formTarget, formBar, currentUnit, enabledPlates[currentUnit]);
+    document.getElementById('form_plates_breakdown').value = res.summary;
+    document.getElementById('form-plates-preview').textContent = `${formTarget} ${currentUnit} (${res.summary})`;
+  }
+}
+
+function toggleWorkoutLoadFields() {
+  const activity = document.getElementById('session-activity').value;
+  const loadBox = document.getElementById('workout-load-card');
+  if (activity === 'Gym') {
+    loadBox.style.display = 'block';
+  } else {
+    loadBox.style.display = 'none';
+  }
+}
+
+// Initial boot
+document.addEventListener('DOMContentLoaded', () => {
+  renderPresets();
+  renderInventoryPills();
+  runCalculator();
+  toggleWorkoutLoadFields();
+});
+</script>
+{% endblock %}

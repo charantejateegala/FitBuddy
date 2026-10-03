@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="grid-2" style="grid-template-columns: 280px 1fr;">
+  <div class="card" style="padding: 1rem;">
+    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Messages</h3>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      {% for p in partners %}
+        <a href="{{ url_for('chat', user_id=p.id) }}"
+           class="btn btn-outline {% if partner and partner.id == p.id %}active-partner{% endif %}"
+           style="text-align: left;">
+          {{ p.name }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card chat-box">
+    {% if partner %}
+      <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+        <h3 style="font-size: 1.1rem;">{{ partner.name }}</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">{{ partner.activity }} • {{ partner.city }}</p>
+      </div>
+      
+      <div class="chat-messages">
+        {% for m in messages %}
+          <div class="message-bubble {% if m.sender_id == current_user.id %}sent{% else %}received{% endif %}">
+            {{ m.body }}
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted); text-align: center; margin: auto;">No messages yet. Send a greeting to plan your workout!</p>
+        {% endfor %}
+      </div>
+
+      <form method="POST" style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+        <input type="hidden" name="receiver_id" value="{{ partner.id }}">
+        <input type="text" name="body" class="form-control" placeholder="Type a message..." required autocomplete="off">
+        <button type="submit" class="btn btn-primary">Send</button>
+      </form>
+    {% else %}
+      <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted);">
+        Select a workout partner on the left to start chatting.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

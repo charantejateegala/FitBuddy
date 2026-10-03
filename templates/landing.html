@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="text-align: center; padding: 4rem 1rem;">
+  <span class="badge badge-emerald" style="margin-bottom: 1.5rem;">The Ultimate Workout Partner Platform</span>
+  <h1 style="font-size: 3.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 1.5rem;">
+    FIND YOUR WORKOUT PARTNER.<br><span style="color: var(--accent-emerald);">CRUSH YOUR GOALS.</span>
+  </h1>
+  <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 2.5rem auto; font-size: 1.15rem;">
+    Connect with gym enthusiasts, runners, cyclists, and yogis based on location, schedule, and fitness level.
+  </p>
+  <div style="display: flex; gap: 1rem; justify-content: center;">
+    <a href="{{ url_for('auth') }}" class="btn btn-primary" style="padding: 0.85rem 2rem; font-size: 1.1rem;">Get Started</a>
+    <a href="{{ url_for('auth') }}" class="btn btn-outline" style="padding: 0.85rem 2rem; font-size: 1.1rem;">Sign In</a>
+  </div>
+</div>
+
+<div class="grid-3" style="margin-top: 3rem;">
+  <div class="card">
+    <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">Smart Matching</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Algorithm-driven compatibility calculation using location, goals, and training routines.</p>
+  </div>
+  <div class="card">
+    <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">Scheduled Workouts</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Host or join gym sessions, distance runs, or flexibility camps in your local neighborhood.</p>
+  </div>
+  <div class="card">
+    <h3 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">Safety Shield</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Account verification, direct blocking, incident reporting, and real-time emergency safety tools.</p>
+  </div>
+</div>
+{% endblock %}
